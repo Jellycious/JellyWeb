@@ -1,5 +1,6 @@
 import socket
 import threading
+from HttpResponse import HttpResponse, HttpResponseStatus
 
 
 # Define class for threading
@@ -16,15 +17,13 @@ class HandleRequestThread(threading.Thread):
 
 
 def send_response(client_socket):
-    response_body = "<html><body>It Works!</body></html>"
-    response_version = "HTTP-Version: HTTP/1.1 200 OK\n"
-    response_server = "Server: JellyWebserver \n"
-    response_allow_control = "Access-Control-Allow-Origin: *\n"
-    response_content_length = get_content_length_header(response_body)
-    response_content_type = "Content-Type: text/html; charset=utf-8\n"
-    response = response_version + response_server + response_allow_control + response_content_length + response_content_type + "\n" + response_body
+    response = HttpResponse(HttpResponseStatus(200))
+    body = "<!DOCTYPE html><html><body>It works!</body></html>"
+    content_type = "text/html; charset=utf-8"
+    response.set_body(body, content_type)
+    response.build()
     # sending response
-    client_socket.send(bytes(response.encode()))
+    client_socket.send(bytes(str(response).encode()))
 
 
 def get_content_length_header(body):
