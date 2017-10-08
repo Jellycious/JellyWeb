@@ -85,7 +85,7 @@ class HttpResponse:
                 if header in self.headers:
                     # Add new line for body header
                     if header == 'body':
-                        response_string += '\n' + self.headers[header]
+                        response_string += '\n' + str(self.headers[header])
                     else:
                         response_string += self.headers[header]+"\n"
             return response_string
