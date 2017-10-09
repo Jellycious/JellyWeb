@@ -2,7 +2,7 @@ import socket
 import threading
 from HttpResponse import HttpResponse, HttpResponseStatus
 from HttpRequest import HttpRequest
-from resource_getter import get_file
+import resource_getter
 import StandardizedResponses
 
 
@@ -21,13 +21,14 @@ class HandleRequestThread(threading.Thread):
         request_bytes = self.client_socket.recv(4096)
         try:
             request = HttpRequest(request_bytes)
-            print("URI='"+request.get_uri()+"'")
             response = self.handle_request(request)
+            print("trying to build response")
             response.build()
-            self.server.send_response(self.client_socket, response)
+            response_bytes = response.get_bytes()
+            self.server.send_response(self.client_socket, response_bytes)
         except Exception as e:
-            print(e)
-            self.server.send_response(self.client_socket, StandardizedResponses.get_internal_server_error())
+            print_error(e)
+            self.server.send_response(self.client_socket, StandardizedResponses.get_internal_server_error().get_bytes())
 
     def handle_request(self, request):
         request_method = request.get_method()
@@ -40,22 +41,24 @@ class HandleRequestThread(threading.Thread):
         if get_request.get_method() == 'GET':
             uri = get_request.get_uri()
             if uri == "/":
-                body = get_file("index.html")
+                body = resource_getter.get_file_bytes("/index.html")
                 content_type = "text/html; charset=utf-8"
                 response = HttpResponse(HttpResponseStatus(200))
                 response.set_body(body, content_type)
                 return response
             else:
                 try:
-                    body = get_file(uri)
+                    body = resource_getter.get_file_bytes(uri)
                     response = HttpResponse(HttpResponseStatus(200))
-                    response.set_body(body, "image/x-icon")
+                    mime = resource_getter.get_format(uri)
+                    response.set_body(body, mime)
                     return response
                 except Exception as e:
                     if isinstance(e, FileNotFoundError):
+                        print_error(e)
                         return HttpResponse(HttpResponseStatus(404))
                     else:
-                        pass
+                        print_error(e)
         else:
             raise Exception("Method not of type GET")
 
@@ -71,7 +74,7 @@ class JellyWebServer:
         if self.running:
             # sending response
             print("sending response: "+str(response))
-            client_socket.send(bytes(str(response).encode()))
+            client_socket.send(response)
         else:
             raise Exception("Server is off, start the server first")
 
@@ -97,12 +100,16 @@ class JellyWebServer:
                 # accept connections from outside
                 (client_socket, address) = s.accept()
                 self.clients.append((client_socket, address))
-                print("New Client Connected: "+str(address)+')')
+                #print("New Client Connected: "+str(address)+')')
                 # pass client to thread
                 thread = HandleRequestThread(self, client_socket, address)
                 thread.start()
         finally:
             s.close()
+
+
+def print_error(error, additional_message=""):
+    print('\033[91m' + additional_message + str(error) + '\033[0m')
 
 
 server = JellyWebServer("localhost")

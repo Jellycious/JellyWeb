@@ -32,7 +32,6 @@ class HttpResponse:
     def set_body(self, body, content_type="text/plain"):
         if len(body) == 0:
             raise Exception("body cannot have length 0")
-
         self.body = body
         self.content_type = content_type
         self.content_length = len(body)
@@ -77,6 +76,20 @@ class HttpResponse:
         if self.last_modified:
             self.headers['last-modified'] = "Last-Modified: "+self.last_modified
         self.is_build = True
+
+    def get_bytes(self):
+        if self.is_build:
+            result = bytes()
+            for header in HttpResponse.http_response_order:
+                if header in self.headers:
+                    # Add new line for body header
+                    if header == 'body':
+                        result += '\n'.encode() + self.headers[header]
+                    else:
+                        result += (self.headers[header] + "\n").encode()
+            return result
+        else:
+            raise Exception("Http Response has not been build yet.")
 
     def __str__(self):
         if self.is_build:
